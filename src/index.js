@@ -1,14 +1,16 @@
+import 'dotenv/config'; // Must be first import so env vars load before other imports
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 import cookieParser from 'cookie-parser';
 import authRouter from './routes/authRoutes.js';
 import helpRouter from './routes/helpRoutes.js';
 import userRouter from './routes/userRoutes.js';
-
-dotenv.config();
+import chatRouter from './routes/chatRoutes.js';
+import notificationRouter from './routes/notificationRoutes.js';
+import analyticsRouter from './routes/analyticsRoutes.js';
+import adminRouter from './routes/adminRoutes.js';
 
 // MongoDB Connection
 connectDB();
@@ -26,6 +28,10 @@ app.use(cookieParser());
 app.use('/api/auth', authRouter);
 app.use('/api/help', helpRouter);
 app.use('/api/user', userRouter);
+app.use('/api/chat', chatRouter);
+app.use('/api/notifications', notificationRouter);
+app.use('/api/analytics', analyticsRouter);
+app.use('/api/admin', adminRouter);
 
 app.get('/', (req, res) => {
   res.send('Server is running');

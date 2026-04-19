@@ -56,11 +56,16 @@ const userSchema = new mongoose.Schema({
   },
   trustScore: {
     type: Number,
-    default: 100,
+    default: 50,
   },
   badges: {
     type: [String],
     default: [],
+  },
+  signupRole: {
+    type: String,
+    enum: ['Need Help', 'Can Help', 'Both'],
+    default: 'Both',
   },
 }, { timestamps: true });
 

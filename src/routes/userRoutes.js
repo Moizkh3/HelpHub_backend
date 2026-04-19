@@ -1,7 +1,7 @@
 import express from 'express';
 import { 
     getUserData, getDashboardStats, 
-    updateProfile, getLeaderboard 
+    updateProfile, getLeaderboard, getAllUsers 
 } from '../controllers/userController.js';
 import userAuth from '../middleware/authMiddleware.js';
 
@@ -14,5 +14,6 @@ userRouter.get('/leaderboard', getLeaderboard);
 userRouter.get('/data', userAuth, getUserData);
 userRouter.get('/stats', userAuth, getDashboardStats);
 userRouter.post('/update-profile', userAuth, updateProfile);
+userRouter.get('/all', userAuth, getAllUsers);
 
 export default userRouter;

@@ -44,7 +44,11 @@ export const register = async (req, res) => {
             html: WELCOME_TEMPLATE.replace("{{name}}", name).replace("{{email}}", email)
         }
 
-        await transporter.sendMail(mailOptions)
+        try {
+            await transporter.sendMail(mailOptions);
+        } catch (mailError) {
+            console.error("Welcome email failed to send (SMTP issue):", mailError.message);
+        }
 
         return res.json({ success: true })
 

@@ -13,12 +13,14 @@ export const getUserData = async (req, res) => {
         res.json({
             success: true,
             userData: {
+                _id: user._id.toString(),
                 name: user.name,
                 isAccountVerified: user.isAccountVerified,
                 trustScore: user.trustScore,
                 badges: user.badges,
                 skills: user.skills,
-                location: user.location
+                location: user.location,
+                role: user.role
             }
         });
 
@@ -78,12 +80,42 @@ export const updateProfile = async (req, res) => {
 // Get Leaderboard
 export const getLeaderboard = async (req, res) => {
     try {
-        const topHelpers = await userModel.find({})
-            .sort({ trustScore: -1 })
-            .limit(10)
-            .select('name trustScore badges skills');
+        const topHelpers = await userModel.aggregate([
+            {
+                $lookup: {
+                    from: 'helprequests',
+                    localField: '_id',
+                    foreignField: 'rewardedHelper',
+                    as: 'solvedRequests'
+                }
+            },
+            {
+                $project: {
+                    name: 1,
+                    trustScore: 1,
+                    badges: 1,
+                    skills: 1,
+                    contributions: { $size: '$solvedRequests' }
+                }
+            },
+            { $sort: { trustScore: -1, contributions: -1 } },
+            { $limit: 10 }
+        ]);
 
         res.json({ success: true, leaderboard: topHelpers });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+};
+
+// Get All Users (for messaging)
+export const getAllUsers = async (req, res) => {
+    try {
+        const currentUserId = req.userId;
+        const users = await userModel.find({ _id: { $ne: currentUserId } })
+            .select('name _id trustScore');
+        
+        res.json({ success: true, users });
     } catch (error) {
         res.json({ success: false, message: error.message });
     }

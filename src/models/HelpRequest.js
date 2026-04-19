@@ -43,6 +43,10 @@ const helpRequestSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  rewardedHelper: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
 }, { timestamps: true });
 
 export default mongoose.model('HelpRequest', helpRequestSchema);

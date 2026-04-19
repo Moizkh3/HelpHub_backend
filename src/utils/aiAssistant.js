@@ -1,64 +1,79 @@
-const CATEGORIES = [
-    { name: 'Web Development', keywords: ['javascript', 'react', 'node', 'html', 'css', 'frontend', 'backend', 'api', 'fullstack', 'vite', 'tailwind'] },
-    { name: 'Design', keywords: ['figma', 'ui', 'ux', 'adobe', 'logo', 'design', 'layout', 'spacing', 'color', 'typography'] },
-    { name: 'Data Science', keywords: ['python', 'data', 'analysis', 'ml', 'machine learning', 'sql', 'pandas', 'numpy'] },
-    { name: 'Career', keywords: ['interview', 'mock', 'internship', 'resume', 'cv', 'job', 'application', 'hiring'] },
-    { name: 'Marketing', keywords: ['seo', 'content', 'ads', 'google', 'facebook', 'social media', 'strategy'] }
-];
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import dotenv from 'dotenv';
 
-const TAG_DATABASE = [
-    'Frontend', 'Backend', 'Figma', 'React', 'JavaScript', 'Node.js', 
-    'Interview Prep', 'Career', 'Responsive', 'UI/UX', 'Database', 
-    'Python', 'Machine Learning', 'API Integration'
-];
+dotenv.config();
 
-export const getSmartSuggestions = (title = '', description = '') => {
-    const text = (title + ' ' + description).toLowerCase();
-    
-    // Suggest Category
-    let suggestedCategory = 'Community'; // Default
-    let maxMatches = 0;
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    CATEGORIES.forEach(cat => {
-        const matches = cat.keywords.filter(keyword => text.includes(keyword)).length;
-        if (matches > maxMatches) {
-            maxMatches = matches;
-            suggestedCategory = cat.name;
+/**
+ * Generates smart suggestions for a help request title and description.
+ * returns { suggestedCategory, detectedUrgency, suggestedTags, rewriteSuggestion }
+ */
+export const getSmartSuggestions = async (title = '', description = '') => {
+    try {
+        console.log(`[AI] Generating suggestions for: "${title}"`);
+        if (!title && !description) return null;
+
+        const prompt = `
+            You are an AI assistant for "HelpHub", a community help platform.
+            Analyze the following help request:
+            Title: "${title}"
+            Description: "${description}"
+
+            Provide a JSON response with the following fields:
+            1. "suggestedCategory": Choose one from [Web Development, Design, Data Science, Career, Community, Marketing].
+            2. "detectedUrgency": Choose one from [Low, Medium, High].
+            3. "suggestedTags": An array of up to 5 relevant technical or topical strings.
+            4. "rewriteSuggestion": A more professionally written, clear, and actionable version of the title and summary (max 2 sentences).
+
+            Return ONLY the raw JSON. No conversational filler, no markdown formatting like \`\`\`json.
+        `;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        let text = response.text().trim();
+        
+        // Robust JSON extraction
+        if (text.includes("```")) {
+            text = text.replace(/```json|```/g, "").trim();
         }
-    });
-
-    // Detect Urgency
-    let detectedUrgency = 'Low';
-    const highUrgencyKeywords = ['urgent', 'emergency', 'asap', 'help now', 'stuck', 'blocking', 'deadline', 'tomorrow'];
-    const mediumUrgencyKeywords = ['soon', 'this week', 'next couple of days', 'review'];
-
-    if (highUrgencyKeywords.some(k => text.includes(k))) {
-        detectedUrgency = 'High';
-    } else if (mediumUrgencyKeywords.some(k => text.includes(k))) {
-        detectedUrgency = 'Medium';
+        
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+        
+        throw new Error("Invalid AI response format: " + text);
+    } catch (error) {
+        console.error("AI Assistant Error:", error);
+        // Fallback to basic logic if AI fails
+        return {
+            suggestedCategory: 'Community',
+            detectedUrgency: 'Medium',
+            suggestedTags: ['Help Needed'],
+            rewriteSuggestion: 'Start describing your problem to generate a professional rewrite.'
+        };
     }
-
-    // Suggest Tags
-    const suggestedTags = TAG_DATABASE.filter(tag => text.includes(tag.toLowerCase())).slice(0, 5);
-    if (suggestedTags.length === 0) {
-        suggestedTags.push('Help Needed');
-    }
-
-    // Rewrite Suggestion (Very basic placeholder)
-    const rewriteSuggestion = title.length < 20 
-        ? `Consider adding more detail to your title: "${title} for [Project Name]"`
-        : 'Title looks good and clear.';
-
-    return {
-        suggestedCategory,
-        detectedUrgency,
-        suggestedTags,
-        rewriteSuggestion
-    };
 };
 
-export const generateAiSummary = (description) => {
-    // Mock summary generation
-    if (!description) return '';
-    return `AI Summary: This request involves a ${description.length > 100 ? 'complex' : 'straightforward'} challenge related to the mentioned skills. The requester is seeking collaborative support to solve specific issues outlined in the description.`;
+/**
+ * Generates a concise AI summary for a help request.
+ */
+export const generateAiSummary = async (description) => {
+    try {
+        if (!description) return "";
+
+        const prompt = `
+            Summarize the following help request in a single, professional sentence that highlights exactly what the user is struggling with and what they need.
+            Description: "${description}"
+        `;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        return response.text().trim();
+    } catch (error) {
+        console.error("AI Summary Error:", error);
+        return description.substring(0, 150) + "...";
+    }
 };
